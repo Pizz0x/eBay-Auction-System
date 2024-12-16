@@ -1,7 +1,7 @@
 package classes
 
 import akka.actor.typed.ActorRef
-import solutions.*
+import messages.*
 
 
 // Main class
