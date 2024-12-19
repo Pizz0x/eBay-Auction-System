@@ -11,6 +11,7 @@ resolvers += "Akka library repository" at "https://repo.akka.io/maven"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor-typed" % "2.10.0",
-  "org.slf4j" % "slf4j-simple" % "2.0.16"
+  "org.slf4j" % "slf4j-simple" % "2.0.16",
+  "com.typesafe.akka" %% "akka-persistence-typed" % "2.6.20"
 )
 

@@ -11,7 +11,7 @@ import classes.*
 
 object AuctionActor:
 
-  def apply(item: String, startingPrice: Double, duration: Int, seller: ActorRef[SellerTrait], bank: ActorRef[BankTrait]): Behavior[AuctionTrait] =
+  def apply(item: String, startingPrice: Double, duration: Int, seller: ActorRef[SellerTrait], bank: ActorRef[BankTrait], eBay: ActorRef[eBayTrait]): Behavior[AuctionTrait] =
     Behaviors.setup { context =>
       implicit val bidOrdering: Ordering[Bid] = Ordering.by(_.value)
       var bids = ListBuffer[Bid]()
@@ -34,12 +34,14 @@ object AuctionActor:
                 }
               case None if amount < startingPrice =>
                 bidder ! BidRejected(item, s"The starting price $startingPrice is higher than what you offer")
+              case _ =>
+                bids += Bid(bidder, name, account, amount)
+                highestBid = Some(Bid(bidder, name, account, amount))
+                context.log.info(s"New Highest bid for $item of $amount made by $name")
+                bidder ! BidAccepted(item)
+                eBay ! UpdateAuction(context.self, item, amount)
             }
-            bids += Bid(bidder, account, name, amount)
-            highestBid = Some(Bid(bidder, account, name, amount))
-            context.log.info(s"New Highest bid for $item of $amount made by $name")
-            bidder ! BidAccepted(item)
-            eBay ! UpdateAuction(context.self, item, amount)
+            
             Behaviors.same
 
           case WithdrawBid(bidder, eBay) if active =>
@@ -68,10 +70,12 @@ object AuctionActor:
 
           case AuctionEnded =>
             active = false
+            eBay ! FinishAuction(context.self)
             highestBid match {
               case Some(bid) =>
                 context.log.info(s"Auction for $item ended, the winner is ${bid.name} with a bid of ${bid.value}")
                 bank ! AuctionFinished(bid, seller, item, context.self)
+                
               case None =>
                 context.log.info(s"The auction for $item ended with no bids")
             }

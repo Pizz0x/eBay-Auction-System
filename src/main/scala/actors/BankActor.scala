@@ -21,7 +21,8 @@ object BankActor:
           if accounts.contains(Bidder(bid.name, bid.bankaccount)) && accounts(Bidder(bid.name, bid.bankaccount))>=bid.value then
             accounts(Bidder(bid.name, bid.bankaccount)) -= bid.value
             bid.bidder ! NotifyBidder(item, bid.value, auction, context.self, seller, bid.bidder)
-            seller ! NotifySeller(bid.name, bid.value, auction, context.self, seller, bid.bidder)
+            seller ! NotifySeller(item, bid.name, bid.value, auction, context.self, seller, bid.bidder)
+            eBay ! FinishAuction(auction)
           else
             auction ! ReBid(bid.bidder, eBay)
             bid.bidder ! BidCanceled(item)
@@ -49,7 +50,7 @@ object BankActor:
         case RefoundBidder(auction, bidder) =>
           val amount = transactions(auction.path.name)._3
           accounts(bidder) += amount
-          context.log.info(s"Bidder ${bidder.name} refounded of $amount")
+          context.log.info(s"Bidder ${bidder.name} refounded of $amount, now your amount is ${accounts(bidder)}")
           Behaviors.same
       }
     }

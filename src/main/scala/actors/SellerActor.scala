@@ -13,13 +13,13 @@ object SellerActor:
     Behaviors.setup{ context =>
       val auctionsSold = mutable.Map[String, Long]()
       Behaviors.receiveMessage {
-        case CreateAuction(item, startingPrice, duration, replyTo) =>
-          val auction = context.spawn(AuctionActor(item, startingPrice, duration, context.self, bank), s"Auction$item")
+        case CreateAuction(item, startingPrice, duration) =>
+          val auction = context.spawn(AuctionActor(item, startingPrice, duration, context.self, bank, eBay), s"Auction$item")
           context.log.info(s"Auction for $item created with starting price: $startingPrice and duration of $duration seconds.")
-          replyTo ! RegisterAuction(auction, item, startingPrice)
+          eBay ! RegisterAuction(auction, item, startingPrice, context.self)
           Behaviors.same
-        case NotifySeller(item, amount, auction, bank, seller, bidder) =>
-          context.log.info(s"Auction for item $item concluded with an offer of $amount")
+        case NotifySeller(item, name, amount, auction, bank, seller, bidder) =>
+          context.log.info(s"Auction for item $item concluded with an offer of $amount by $name")
           bank ! SellerAcknowledge(auction, item, amount, seller, bidder)
           Behaviors.same
         case AuctionSold(item, auction) =>
@@ -33,6 +33,14 @@ object SellerActor:
             bank ! RefoundBidder(auction, Bidder(name, bankaccount))
           else
             bidder ! NotReturned(item)
+          Behaviors.same
+        case RecreateAuction(item, startingPrice, duration) =>
+          eBay ! RetryAuction(s"Auction$item", item, startingPrice, duration, context.self)
+          Behaviors.same
+        case AuctionExisted(item, startingPrice, duration) =>
+          val auction = context.spawn(AuctionActor(item, startingPrice, duration, context.self, bank, eBay), s"Auction$item")
+          context.log.info(s"Auction for $item recreated with starting price: $startingPrice and duration of $duration seconds.")
+          eBay ! ReregisterAuction(auction, item, startingPrice, context.self)
           Behaviors.same
       }
     }
