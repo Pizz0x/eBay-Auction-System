@@ -1,4 +1,4 @@
-package solutions
+
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
@@ -17,12 +17,12 @@ object AuctionSystem:
   def apply(): Behavior[SystemTrait] = Behaviors.setup { context =>
     
     implicit val ec: ExecutionContext = context.system.executionContext
-    
+    var idseller = 1
     val ebay = context.spawn(eBayActor(), "eBay")
     val bank = context.spawn(BankActor(ebay), "Bank")
     
-    val seller1 = context.spawn(SellerActor(ebay, bank), "Seller1")
-    val seller2 = context.spawn(SellerActor(ebay, bank), "Seller2")
+    val seller1 = context.spawn(SellerActor(idseller, ebay, bank), "Seller1")
+    val seller2 = context.spawn(SellerActor(idseller, ebay, bank), "Seller2")
     
     val bidder1 = context.spawn(BidderActor(name = "Frank", bankaccount = "BE6753", eBay = ebay), "Bidder1")
     bank ! RegisterAccount("Frank", "BE6753", 5000)
