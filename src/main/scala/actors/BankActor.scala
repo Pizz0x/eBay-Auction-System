@@ -3,11 +3,11 @@ package actors
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import scala.collection.mutable
-import messages.*
+import commands.*
 import classes.*
 
 object BankActor:
-  def apply(eBay: ActorRef[eBayTrait]): Behavior[BankTrait] =
+  def apply(eBay: ActorRef[eBayCommand]): Behavior[BankCommand] =
     Behaviors.setup { context =>
       val accounts = mutable.Map[Bidder, Double]()
       val transactions = mutable.Map[String, State]()

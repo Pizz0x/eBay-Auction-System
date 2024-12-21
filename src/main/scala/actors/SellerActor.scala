@@ -2,14 +2,14 @@ package actors
 
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
-import messages.*
+import commands.*
 import classes.*
 
 import scala.collection.mutable
 
 
 object SellerActor:
-  def apply(eBay: ActorRef[eBayTrait], bank: ActorRef[BankTrait]): Behavior[SellerTrait] =
+  def apply(eBay: ActorRef[eBayCommand], bank: ActorRef[BankCommand]): Behavior[SellerCommand] =
     Behaviors.setup{ context =>
       val auctionsSold = mutable.Map[String, Long]()
       Behaviors.receiveMessage {
@@ -37,8 +37,8 @@ object SellerActor:
         case RecreateAuction(item, startingPrice, duration) =>
           eBay ! RetryAuction(s"Auction$item", item, startingPrice, duration, context.self)
           Behaviors.same
-        case AuctionExisted(item, startingPrice, duration) =>
-          val auction = context.spawn(AuctionActor(item, startingPrice, duration, context.self, bank, eBay), s"Auction$item")
+        case AuctionExisted(item, startingPrice, duration, auction) =>
+          auction ! BeActive(startingPrice, duration)
           context.log.info(s"Auction for $item recreated with starting price: $startingPrice and duration of $duration seconds.")
           eBay ! ReregisterAuction(auction, item, startingPrice, context.self)
           Behaviors.same

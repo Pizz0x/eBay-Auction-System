@@ -3,13 +3,13 @@ package actors
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import classes.*
-import messages.*
+import commands.*
 
 import scala.util.Random
 
 
 object BidderActor:
-  def apply(name: String, bankaccount: String, eBay: ActorRef[eBayTrait]): Behavior[BidderTrait] =
+  def apply(name: String, bankaccount: String, eBay: ActorRef[eBayCommand]): Behavior[BidderCommand] =
     Behaviors.receive { (context, message) =>
       message match
         case BidAccepted(item) =>

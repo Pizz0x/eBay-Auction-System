@@ -2,7 +2,7 @@ package actors
 
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
-import messages.*
+import commands.*
 import classes.*
 
 import scala.collection.mutable
@@ -10,10 +10,9 @@ import scala.concurrent.ExecutionContext
 
 
 object eBayActor:
-  def apply(): Behavior[eBayTrait] =
+  def apply(): Behavior[eBayCommand] =
     Behaviors.setup { context =>
       val auctions = mutable.Map[String, Auction]()
-      implicit val ec: ExecutionContext = context.system.executionContext
 
       Behaviors.receiveMessage {
         case RegisterAuction(auction, item, startingPrice, seller) =>
@@ -56,7 +55,7 @@ object eBayActor:
           Behaviors.same
         case RetryAuction(auction, item, startingPrice, duration, seller) =>
           if (auctions.contains(auction) && !auctions(auction).active && auctions(auction).seller == seller) then
-            seller ! AuctionExisted(item, startingPrice, duration)
+            seller ! AuctionExisted(item, startingPrice, duration, auctions(auction).auction)
           else
             context.log.info(s"The auction $auction doesn't exist or it's already active")
           Behaviors.same

@@ -7,7 +7,7 @@ import scala.util.Random
 import scala.collection.mutable
 import scala.collection.mutable.*
 import scala.concurrent.duration.*
-import messages.*
+import commands.*
 import classes.*
 import actors.*
 
@@ -29,22 +29,22 @@ object AuctionSystem:
     val bidder2 = context.spawn(BidderActor("Anne", "BE2257", ebay), "Bidder2")
     bank ! RegisterAccount("Anne", "BE2257", 7000)
     
-    context.scheduleOnce(2.seconds, seller1, CreateAuction("Small_Sculpture", 500, 18))
-    context.scheduleOnce(2.seconds, seller1, CreateAuction("History_Book", 30, 15))
-    context.scheduleOnce(2.seconds, seller2, CreateAuction("Mobile_Phone", 350, 17))
-    context.scheduleOnce(2.seconds, seller2, CreateAuction("Computer", 250, 16))
+    context.scheduleOnce(2.seconds, seller1, CreateAuction("Small_Sculpture2", 500, 18))
+    context.scheduleOnce(2.seconds, seller1, CreateAuction("History_Book2", 30, 15))
+    context.scheduleOnce(2.seconds, seller2, CreateAuction("Mobile_Phone2", 350, 17))
+    context.scheduleOnce(2.seconds, seller2, CreateAuction("Computer2", 250, 16))
     
     context.scheduleOnce(4.seconds, ebay, GetAvailableAuctions(bidder1))
     context.scheduleOnce(5.seconds, ebay, GetAvailableAuctions(bidder2))
     context.scheduleOnce(6.seconds, ebay, GetAvailableAuctions(bidder1))
     context.scheduleOnce(7.seconds, ebay, GetAvailableAuctions(bidder2))
     
-    context.scheduleOnce(9.seconds, bidder1, CreateBid("AuctionSmall_Sculpture", 550, "Small_Sculpture"))
-    context.scheduleOnce(10.seconds, bidder2, CreateBid("AuctionSmall_Sculpture", 580, "Small_Sculpture"))
-    context.scheduleOnce(11.seconds, bidder2, RemoveBid("AuctionSmall_Sculpture"))
-    context.scheduleOnce(17.seconds, bidder1, ReturnAuction("AuctionSmall_Sculpture"))
-    context.scheduleOnce(21.seconds, bidder1, ReturnAuction("AuctionSmall_Sculpture"))
-    context.scheduleOnce(22.seconds, seller1, RecreateAuction("History_Book", 36, 6))
+    context.scheduleOnce(9.seconds, bidder1, CreateBid("AuctionSmall_Sculpture2", 550, "Small_Sculpture2"))
+    context.scheduleOnce(10.seconds, bidder2, CreateBid("AuctionSmall_Sculpture2", 580, "Small_Sculpture2"))
+    context.scheduleOnce(11.seconds, bidder2, RemoveBid("AuctionSmall_Sculpture2"))
+    context.scheduleOnce(17.seconds, bidder1, ReturnAuction("AuctionSmall_Sculpture2"))
+    context.scheduleOnce(21.seconds, bidder1, ReturnAuction("AuctionSmall_Sculpture2"))
+    context.scheduleOnce(22.seconds, seller1, RecreateAuction("History_Book2", 36, 6))
     context.scheduleOnce(24.seconds, ebay, GetAvailableAuctions(bidder2))
 
 
