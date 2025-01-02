@@ -13,7 +13,7 @@ object BidderActor:
     Behaviors.receive { (context, message) =>
       message match
         case BidAccepted(item) =>
-          context.log.info(s"$name: Bid Accepted for $item")
+          context.log.info(s"${name}: Bid Accepted for $item")
         case BidRejected(item, reason) =>
           context.log.info(s"$name: Bid Rejected for $item: $reason")
         case BidWithdrawn(item) =>
@@ -51,5 +51,7 @@ object BidderActor:
           eBay ! PassWithdraw(auction, context.self)
         case ReturnAuction(auction) =>
           eBay ! PassReturn(auction, context.self, name, bankaccount)
+        case RandomBid =>
+          eBay ! GetAvailableAuctions(context.self)
       Behaviors.same
     }

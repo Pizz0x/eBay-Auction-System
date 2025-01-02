@@ -25,6 +25,10 @@ object SellerActor:
                 context.log.info(s"Auction for $item created with starting price: $startingPrice and duration of $duration seconds.")
                 eBay ! RegisterAuction(auction, item, startingPrice, context.self)
               }
+            case RemoveAuction(auction) =>
+              Effect.none.thenRun{ _ =>
+                eBay ! PassRemove(auction)
+              }
             case NotifySeller(item, name, amount, auction, bank, seller, bidder) =>
               Effect.none.thenRun{ _ =>
                 context.log.info(s"Auction for item $item concluded with an offer of $amount by $name")

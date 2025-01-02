@@ -50,14 +50,14 @@ object AuctionActor:
                 if state.active =>
                 if (state.bids.exists(_.bidder == bidder)) {
                   Effect.persist(WithdrawBidEvent(bidder)).thenRun{ updateState =>
-                    bidder ! BidWithdrawn(state.item)
-                    state.highestBid match {
+                    bidder ! BidWithdrawn(updateState.item)
+                    updateState.highestBid match {
                       case Some(bid) =>
-                        val x = state.bids.maxBy(_.value)
-                        x.bidder ! NewWinner(s"The max bid of the auction for $item has been withdraw, now you are again winning the auction with ${x.value}")
-                        state.bids.foreach { bid =>
+                        val x = updateState.bids.maxBy(_.value)
+                        x.bidder ! NewWinner(s"${x.bidder}: The max bid of the auction for $item has been withdraw, now you are again winning the auction with ${x.value}")
+                        updateState.bids.foreach { bid =>
                           if bid.bidder != x._1 then
-                            bid.bidder ! NewWinner(s"The max bid of the auction for $item has been withdraw, now the max bid is: ${x.value}")
+                            bid.bidder ! NewWinner(s"${bid.bidder}: The max bid of the auction for $item has been withdraw, now the max bid is: ${x.value}")
                         }
                         eBay ! UpdateAuction(context.self, item, x.value)
                     }
@@ -68,7 +68,7 @@ object AuctionActor:
 
               case AuctionRemoved(replyTo) =>
                 Effect.persist(AuctionRemovedEvent).thenRun{ updateState =>
-                  state.bids.foreach(bid =>
+                  updateState.bids.foreach(bid =>
                     bid.bidder ! AuctionDeleted(state.item)
                   )
                   replyTo ! FinishAuction(context.self)
@@ -76,21 +76,23 @@ object AuctionActor:
 
               case AuctionEnded =>
                 Effect.persist(AuctionEndedEvent).thenRun{ updateState =>
-                  eBay ! FinishAuction(context.self)
-                  state.highestBid match{
+                  
+                  updateState.highestBid match{
                     case Some(bid) =>
                       context.log.info(s"Auction for $item ended, the winner is ${bid.name} with a bid of ${bid.value}")
                       bank ! AuctionFinished(bid, seller, item, context.self)
+                      eBay ! SuccessfullyFinished(context.self)
                     case None =>
                       context.log.info(s"The auction for $item ended with no bids")
+                      eBay ! FinishAuction(context.self)
                   }
                 }
 
               case ReBid(bidder, eBay) if !state.active =>
                 Effect.persist(WithdrawBidEvent(bidder)).thenRun{ updateState =>
-                  state.highestBid match {
+                  updateState.highestBid match {
                     case Some(bid) =>
-                      val x = state.bids.maxBy(_.value)
+                      val x = updateState.bids.maxBy(_.value)
                       x.bidder ! NewWinner(s"The max bid of the auction for $item has been canceled for bank problems, so you have won the auction with ${x.value}")
                       eBay ! UpdateAuction(context.self, item, x.value)
                       context.self ! AuctionEnded
@@ -98,7 +100,7 @@ object AuctionActor:
                 }
 
               case BeActive(newprice, newduration) if !state.active =>
-                timers.startSingleTimer(AuctionEnded, duration.seconds)
+                timers.startSingleTimer(AuctionEnded, newduration.seconds)
                 Effect.persist(BeActiveEvent(newprice, newduration)).thenRun(_ =>
                   context.log.info(s"Auction for $item has been re-started by his seller")
                 )
@@ -108,14 +110,15 @@ object AuctionActor:
               case PlaceBidEvent(bid) =>
                 state.copy(bids = state.bids += bid, highestBid = Some(bid))
               case WithdrawBidEvent(bidder) =>
-                val x = state.bids.maxBy(_.value)
-                state.copy(bids = state.bids.filterNot(_.bidder == bidder), highestBid = Some(x))
+                val bidds = state.bids.filterNot(_.bidder == bidder)
+                val x = bidds.maxBy(_.value)
+                state.copy(bids = bidds, highestBid = Some(x))
               case AuctionRemovedEvent =>
                 state.copy(active = false)
               case AuctionEndedEvent =>
                 state.copy(active = false)
               case BeActiveEvent(newprice, newduration) =>
-                state.copy(active = true, startingPrice = newprice, duration = newduration)
+                state.copy(active = true, startingPrice = newprice, duration = newduration, bids = ListBuffer.empty, highestBid = None, endTime = System.currentTimeMillis() + newduration * 1000)
           }
         )
       }

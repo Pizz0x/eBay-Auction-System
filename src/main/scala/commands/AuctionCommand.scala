@@ -10,3 +10,4 @@ case class ReBid(bidder: ActorRef[BidderCommand], eBay: ActorRef[eBayCommand]) e
 case class AuctionRemoved(replyTo: ActorRef[eBayCommand]) extends AuctionCommand
 case object AuctionEnded extends AuctionCommand
 case class BeActive(startingPrice: Double, duration: Int) extends AuctionCommand
+case object NoBid extends AuctionCommand

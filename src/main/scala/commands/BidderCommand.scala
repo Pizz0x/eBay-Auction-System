@@ -21,3 +21,4 @@ case class BidCanceled(item: String) extends BidderCommand
 case class CreateBid(auction: String, amount: Double, item: String) extends BidderCommand
 case class RemoveBid(auction: String) extends BidderCommand
 case class ReturnAuction(auction: String) extends BidderCommand
+case object RandomBid extends BidderCommand
