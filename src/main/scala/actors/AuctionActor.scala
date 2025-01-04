@@ -21,7 +21,7 @@ object AuctionActor:
         timers.startSingleTimer(AuctionEnded, duration.seconds)
         EventSourcedBehavior[AuctionCommand, AuctionEvent, AuctionState](
           persistenceId = PersistenceId.ofUniqueId(s"Auction$item"),
-          emptyState = AuctionState(item, startingPrice, duration, seller, bank, eBay, ListBuffer.empty, None, true, System.currentTimeMillis() + duration * 1000),
+          emptyState = AuctionState(item, startingPrice, duration, seller, bank, eBay, ListBuffer.empty, None, true, System.currentTimeMillis() + duration * 1000, false),
           commandHandler = {(state, command) =>
             command match
               case PlaceBid(name, account, amount, bidder, eBay) if state.active =>
@@ -31,9 +31,6 @@ object AuctionActor:
                   case Some(bid) if amount <= bid.value =>
                     Effect.none.thenRun { _ =>
                       bidder ! BidRejected(item, s"The current price for the auction is ${bid.value}, so your bid was rejected")
-                      state.bids.foreach { bid =>
-                        bid.bidder ! BidSurpassed(item, amount)
-                      }
                     }
                   case None if amount < startingPrice =>
                     Effect.none.thenRun(_ => bidder ! BidRejected(item, s"The starting price $startingPrice is higher than what you offer"))
@@ -43,12 +40,18 @@ object AuctionActor:
                     Effect.persist(PlaceBidEvent(newbid)).thenRun { updateState =>
                       bidder ! BidAccepted(item)
                       eBay ! UpdateAuction(context.self, item, amount)
+                      state.bids.foreach { bid =>
+                        bid.bidder ! BidSurpassed(item, amount)
+                      }
                     }
                 }
 
-              case WithdrawBid(bidder, eBay)
-                if state.active =>
-                if (state.bids.exists(_.bidder == bidder)) {
+              case WithdrawBid(bidder, eBay) =>
+                if !state.active then
+                  Effect.none.thenRun( _ =>
+                    bidder ! NotWithdrawn(s"The bid for the auction $item has not been withdrawn because the auction is already closed")
+                  )
+                else if (state.bids.exists(_.bidder == bidder)) {
                   Effect.persist(WithdrawBidEvent(bidder)).thenRun{ updateState =>
                     bidder ! BidWithdrawn(updateState.item)
                     updateState.highestBid match {
@@ -64,27 +67,40 @@ object AuctionActor:
                   }
                 }
                 else
-                  Effect.none
-
-              case AuctionRemoved(replyTo) =>
-                Effect.persist(AuctionRemovedEvent).thenRun{ updateState =>
-                  updateState.bids.foreach(bid =>
-                    bid.bidder ! AuctionDeleted(state.item)
+                  Effect.none.thenRun( _ =>
+                    bidder ! NotWithdrawn(s"The bid for the auction $item has not been withdrawn because you didn't place a bid for that auction")
                   )
-                  replyTo ! FinishAuction(context.self)
+
+              case AuctionRemoved(possible_seller) =>
+                if(possible_seller == seller) {
+                  Effect.persist(AuctionRemovedEvent).thenRun{ updateState =>
+                    updateState.bids.foreach(bid =>
+                      bid.bidder ! AuctionDeleted(state.item)
+                    )
+                    eBay ! FinishAuction(context.self)
+                    seller ! CorrectlyRemoved(s"The auction for $item has been correctly removed")
+                  }
                 }
+                else Effect.none.thenRun(_ =>
+                  seller ! NotRemoved(s"You are not the seller of the auction $item, so you cannot remove it")
+                )
+
 
               case AuctionEnded =>
-                Effect.persist(AuctionEndedEvent).thenRun{ updateState =>
-                  
-                  updateState.highestBid match{
-                    case Some(bid) =>
-                      context.log.info(s"Auction for $item ended, the winner is ${bid.name} with a bid of ${bid.value}")
-                      bank ! AuctionFinished(bid, seller, item, context.self)
-                      eBay ! SuccessfullyFinished(context.self)
-                    case None =>
-                      context.log.info(s"The auction for $item ended with no bids")
-                      eBay ! FinishAuction(context.self)
+                if state.removed then
+                  Effect.none
+                else {
+                  Effect.persist(AuctionEndedEvent).thenRun { updateState =>
+
+                    updateState.highestBid match {
+                      case Some(bid) =>
+                        context.log.info(s"Auction for $item ended, the winner is ${bid.name} with a bid of ${bid.value}")
+                        bank ! AuctionFinished(bid, seller, item, context.self)
+                        eBay ! SuccessfullyFinished(context.self)
+                      case None =>
+                        context.log.info(s"The auction for $item ended with no bids")
+                        eBay ! FinishAuction(context.self)
+                    }
                   }
                 }
 
@@ -114,11 +130,11 @@ object AuctionActor:
                 val x = bidds.maxBy(_.value)
                 state.copy(bids = bidds, highestBid = Some(x))
               case AuctionRemovedEvent =>
-                state.copy(active = false)
+                state.copy(active = false, removed = true)
               case AuctionEndedEvent =>
                 state.copy(active = false)
               case BeActiveEvent(newprice, newduration) =>
-                state.copy(active = true, startingPrice = newprice, duration = newduration, bids = ListBuffer.empty, highestBid = None, endTime = System.currentTimeMillis() + newduration * 1000)
+                state.copy(active = true, removed = false, startingPrice = newprice, duration = newduration, bids = ListBuffer.empty, highestBid = None, endTime = System.currentTimeMillis() + newduration * 1000)
           }
         )
       }

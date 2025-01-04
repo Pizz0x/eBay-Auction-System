@@ -27,7 +27,7 @@ object SellerActor:
               }
             case RemoveAuction(auction) =>
               Effect.none.thenRun{ _ =>
-                eBay ! PassRemove(auction)
+                eBay ! PassRemove(auction, context.self)
               }
             case NotifySeller(item, name, amount, auction, bank, seller, bidder) =>
               Effect.none.thenRun{ _ =>
@@ -43,9 +43,9 @@ object SellerActor:
                 if System.currentTimeMillis() < (state.auctionsSold(auction.path.name) + 5000) then
                   context.log.info(s"The item $item has been returned")
                   bidder ! ReturnedSuccessfully(item)
-                  bank ! RefoundBidder(auction, Bidder(name, bankaccount))
+                  bank ! RefoundBidder(auction, Bidder(name, bankaccount), bidder)
                 else
-                  bidder ! NotReturned(item)
+                  bidder ! NotReturned(s"$name The $item has not been returned successfully because the maximum time to return it already pass")
               }
             case RecreateAuction(item, startingPrice, duration) =>
               Effect.none.thenRun{ _ =>
@@ -56,7 +56,19 @@ object SellerActor:
                 auction ! BeActive(startingPrice, duration)
                 context.log.info(s"Auction for $item recreated with starting price: $startingPrice and duration of $duration seconds.")
                 eBay ! ReregisterAuction(auction, item, startingPrice, context.self)
-              } 
+              }
+            case NoRecreation(msg) =>
+              Effect.none.thenRun( _ =>
+                context.log.info(msg)
+              )
+            case CorrectlyRemoved(msg) =>
+              Effect.none.thenRun( _ =>
+                context.log.info(msg)
+              )
+            case NotRemoved(msg) =>
+              Effect.none.thenRun( _ =>
+                context.log.info(msg)
+              )
         },
         eventHandler = {(state, event) =>
           event match

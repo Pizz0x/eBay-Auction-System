@@ -56,9 +56,9 @@ object eBayActor:
                 bidder ! AvailableAuctions(state.auctions.filter(_._2.active))
               )
 
-            case PassRemove(auction) =>
+            case PassRemove(auction, seller) =>
               Effect.none.thenRun(_ =>
-                state.auctions(auction).auction ! AuctionRemoved(context.self)
+                state.auctions(auction).auction ! AuctionRemoved(seller)
               )
 
             case PassBid(name, bankaccount, amount, auction, bidder) =>
@@ -78,7 +78,7 @@ object eBayActor:
               }
 
             case PassReturn(auction, bidder, name, bankaccount) =>
-              if (!state.auctions(auction).active) then
+              if (state.auctions.contains(auction) && !state.auctions(auction).active) then
                 val item = state.auctions(auction).item
                 val a = state.auctions(auction).auction
                 Effect.none.thenRun{ _ =>
@@ -86,8 +86,9 @@ object eBayActor:
                   state.auctions(auction).seller ! AuctionReturned(item, a, bidder, name, bankaccount)
                 }
               else
-                context.log.info(s"You cannot return the auction $auction because it's still active")
-                Effect.none
+                Effect.none.thenRun{ _ =>
+                  bidder ! NotReturned(s"You cannot return the auction $auction because it doesn't exist or is still active")
+                }
 
             case RetryAuction(auction, item, startingPrice, duration, seller) =>
               if (state.auctions.contains(auction) && !state.auctions(auction).active && state.auctions(auction).seller == seller) then
@@ -95,8 +96,9 @@ object eBayActor:
                   seller ! AuctionExisted(item, startingPrice, duration, state.auctions(auction).auction)
                 )
               else
-                context.log.info(s"The auction $auction doesn't exist or it's already active")
-                Effect.none
+                Effect.none.thenRun(_ =>
+                  seller ! NoRecreation(s"You cannot recreate the auction: the auction $auction doesn't exist or it's already active")
+                )
 
             case ReregisterAuction(auction, item, startingPrice, seller) =>
               Effect.persist(ReregisterAuctionEvent(auction.path.name, startingPrice)).thenRun(_ =>

@@ -9,4 +9,4 @@ case class RegisterAccount(name: String, bankaccount: String, money: Double) ext
 case class AuctionFinished(bid: Bid, seller: ActorRef[SellerCommand], item: String, replyTo: ActorRef[AuctionCommand]) extends BankCommand
 case class SellerAcknowledge(auction: ActorRef[AuctionCommand], item: String, amount: Double, seller: ActorRef[SellerCommand], bidder: ActorRef[BidderCommand]) extends BankCommand
 case class BidderAcknowledge(auction: ActorRef[AuctionCommand], item: String, amount: Double, seller: ActorRef[SellerCommand], bidder: ActorRef[BidderCommand]) extends BankCommand
-case class RefoundBidder(auction: ActorRef[AuctionCommand], bidder: Bidder) extends BankCommand
+case class RefoundBidder(auction: ActorRef[AuctionCommand], bidder: Bidder, bidder_address: ActorRef[BidderCommand]) extends BankCommand

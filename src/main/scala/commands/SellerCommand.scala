@@ -11,3 +11,6 @@ case class RemoveAuction(auction: String) extends SellerCommand
 case class RecreateAuction(item: String, startingPrice: Double, duration: Int) extends SellerCommand
 case class AuctionReturned(item: String, auction: ActorRef[AuctionCommand], bidder: ActorRef[BidderCommand], name: String, bankaccount: String) extends SellerCommand
 case class AuctionExisted(item: String, startingPrice: Double, duration: Int, auction: ActorRef[AuctionCommand]) extends SellerCommand
+case class NoRecreation(msg: String) extends SellerCommand
+case class CorrectlyRemoved(msg:String) extends SellerCommand
+case class NotRemoved(msg:String) extends SellerCommand

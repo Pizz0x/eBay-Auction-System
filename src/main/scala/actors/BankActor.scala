@@ -31,7 +31,7 @@ object BankActor:
                 Effect.persist(AuctionFinishedEvent(bidder, bid.value)).thenRun{ _ =>
                   bid.bidder ! NotifyBidder(item, bid.value, auction, context.self, seller, bid.bidder)
                   seller ! NotifySeller(item, bid.name, bid.value, auction, context.self, seller, bid.bidder)
-                  eBay ! FinishAuction(auction)
+                  //eBay ! FinishAuction(auction)
                 }
               else
                 Effect.none.thenRun{ _ =>
@@ -41,7 +41,7 @@ object BankActor:
 
             case BidderAcknowledge(auction, item, amount, seller, bidder) =>
               if state.transactions.contains(auction.path.name) && state.transactions(auction.path.name)._2 && !state.transactions(auction.path.name)._1 then
-                Effect.persist(BidderAcknowledgeEvent(auction.path.name, amount)).thenRun { _ =>
+                Effect.persist(AcknowledgeEvent(auction.path.name, amount)).thenRun { _ =>
                   seller ! AuctionSold(item, auction)
                   bidder ! AuctionBought(item, auction)
                 }
@@ -59,10 +59,10 @@ object BankActor:
                 Effect.persist(SellerAcknowledgeEvent(auction.path.name, amount))
                 //state.transactions += auction.path.name -> State(false, true, amount)
 
-            case RefoundBidder(auction, bidder) =>
+            case RefoundBidder(auction, bidder, bidder_address) =>
               val amount = state.transactions(auction.path.name)._3
               Effect.persist(RefoundBidderEvent(bidder, amount)).thenRun( _ =>
-                context.log.info(s"Bidder ${bidder.name} refounded of $amount, now your amount is ${state.accounts(bidder) + amount}")
+                bidder_address ! Refounded(s"Bidder ${bidder.name} refounded of $amount, now your amount is ${state.accounts(bidder) + amount}")
               )
 
         },
